@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lista de Mercado por Voz</title>
+  <title>Lista de Mercado com Firebase</title>
   <style>
     :root {
       --primary: #10b981;
@@ -31,6 +31,7 @@
       justify-content: center;
       padding: 20px;
       min-height: 100vh;
+      align-items: center;
     }
 
     .app {
@@ -45,17 +46,108 @@
       gap: 20px;
     }
 
+    /* Tela de Autenticação */
+    #authScreen {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+    }
+
+    #authScreen h1 {
+      font-size: 1.6rem;
+      color: var(--primary-dark);
+    }
+
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .auth-form input {
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .auth-form input:focus {
+      border-color: var(--primary);
+    }
+
+    .btn-auth {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-auth:hover {
+      background: var(--primary-dark);
+    }
+
+    .auth-toggle {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      text-decoration: underline;
+    }
+
+    #authError {
+      color: var(--danger);
+      font-size: 0.85rem;
+      min-height: 18px;
+    }
+
+    /* App Principal (Oculto até logar) */
+    #mainApp {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .app-header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: -10px;
+    }
+
+    #userEmailDisplay {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .btn-logout {
+      background: none;
+      border: 1px solid #d1d5db;
+      color: var(--danger);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
     header {
       text-align: center;
     }
 
     header h1 {
       font-size: 1.5rem;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
     header p {
-      font-size: 0.875rem;
+      font-size: 0.85rem;
       color: var(--muted);
     }
 
@@ -76,7 +168,7 @@
       color: white;
       border: none;
       border-radius: 50px;
-      padding: 14px 28px;
+      padding: 12px 24px;
       font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
@@ -108,7 +200,7 @@
       min-height: 20px;
     }
 
-    /* Formulário Manual (Ordem: Qtd -> Produto -> Valor) */
+    /* Formulário Manual (Qtd -> Produto -> Valor) */
     .manual-form {
       display: flex;
       gap: 8px;
@@ -156,7 +248,7 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      max-height: 360px;
+      max-height: 320px;
       overflow-y: auto;
     }
 
@@ -244,7 +336,7 @@
       padding: 2px 6px;
     }
 
-    /* Rodapé / Total / Ações */
+    /* Rodapé / Total */
     footer {
       border-top: 1px solid #e5e7eb;
       padding-top: 16px;
@@ -275,92 +367,225 @@
       background: var(--excel);
       color: white;
       border: none;
-      padding: 8px 14px;
+      padding: 8px 12px;
       border-radius: 8px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .btn-export:hover {
-      background: var(--excel-dark);
     }
 
     .btn-clear {
       background: transparent;
       border: 1px solid #d1d5db;
       color: var(--muted);
-      padding: 8px 12px;
+      padding: 8px 10px;
       border-radius: 8px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       cursor: pointer;
-    }
-
-    .btn-clear:hover {
-      border-color: var(--danger);
-      color: var(--danger);
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <header>
+    <!-- TELA DE LOGIN / CADASTRO -->
+    <div id="authScreen">
       <h1>🛒 Lista de Mercado</h1>
-      <p>Fale: <strong>"2 arroz 25 reais"</strong> ou apenas <strong>"Arroz 25 reais"</strong> (qtd = 1)</p>
-    </header>
+      <p id="authSubtitle">Entre na sua conta para acessar sua lista na nuvem</p>
 
-    <div class="voice-section">
-      <button id="btnMic" class="btn-mic" type="button">🎤 Falar Qtd, Produto e Valor</button>
-      <div id="statusText">Pronto para ouvir...</div>
+      <form id="authForm" class="auth-form">
+        <input type="email" id="authEmail" placeholder="Seu e-mail" required />
+        <input type="password" id="authPassword" placeholder="Sua senha (mínimo 6 dígitos)" required />
+        <button type="submit" id="authSubmitBtn" class="btn-auth">Entrar</button>
+      </form>
+
+      <div id="authError"></div>
+
+      <button type="button" id="authToggleBtn" class="auth-toggle">Não tem conta? Cadastre-se</button>
     </div>
 
-    <!-- Ordem: Quantidade -> Produto -> Valor -->
-    <form id="manualForm" class="manual-form">
-      <input type="number" id="inputQtd" placeholder="Qtd" value="1" min="1" step="1" required title="Quantidade" />
-      <input type="text" id="inputNome" placeholder="Produto (ex: Arroz)" required />
-      <input type="number" id="inputValor" placeholder="Valor (R$)" step="0.01" min="0" required />
-      <button type="submit" class="btn-add">+</button>
-    </form>
-
-    <ul id="listaItens"></ul>
-
-    <footer>
-      <div class="total-box">
-        <span>Total da Lista</span>
-        <strong id="valorTotal">R$ 0,00</strong>
+    <!-- APLICATIVO PRINCIPAL (Protegido por Login) -->
+    <div id="mainApp">
+      <div class="app-header-top">
+        <span id="userEmailDisplay"></span>
+        <button id="btnLogout" class="btn-logout" type="button">Sair</button>
       </div>
-      <div class="footer-actions">
-        <button id="btnExportar" class="btn-export" type="button">📊 Exportar Excel/CSV</button>
-        <button id="btnLimpar" class="btn-clear" type="button">Limpar</button>
+
+      <header>
+        <h1>🛒 Minha Lista</h1>
+        <p>Fale: <strong>"2 arroz 25 reais"</strong> ou <strong>"Café 18 e 90"</strong></p>
+      </header>
+
+      <div class="voice-section">
+        <button id="btnMic" class="btn-mic" type="button">🎤 Falar Qtd, Produto e Valor</button>
+        <div id="statusText">Pronto para ouvir...</div>
       </div>
-    </footer>
+
+      <form id="manualForm" class="manual-form">
+        <input type="number" id="inputQtd" placeholder="Qtd" value="1" min="1" step="1" required title="Quantidade" />
+        <input type="text" id="inputNome" placeholder="Produto (ex: Arroz)" required />
+        <input type="number" id="inputValor" placeholder="Valor (R$)" step="0.01" min="0" required />
+        <button type="submit" class="btn-add">+</button>
+      </form>
+
+      <ul id="listaItens"></ul>
+
+      <footer>
+        <div class="total-box">
+          <span>Total da Lista</span>
+          <strong id="valorTotal">R$ 0,00</strong>
+        </div>
+        <div class="footer-actions">
+          <button id="btnExportar" class="btn-export" type="button">📊 Excel</button>
+          <button id="btnLimpar" class="btn-clear" type="button">Limpar</button>
+        </div>
+      </footer>
+    </div>
   </div>
 
-  <script>
-    const btnMic = document.getElementById('btnMic');
-    const statusText = document.getElementById('statusText');
+  <!-- Importando o Firebase v10 via CDN -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      doc,
+      updateDoc,
+      deleteDoc,
+      query,
+      where,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // ==========================================
+    // ⚙️ CONFIGURAÇÃO DO SEU FIREBASE
+    // ==========================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyC9IW8dctpLeWQYvfDY82eiyEe1xjsP5Pw",
+  authDomain: "mylist-food.firebaseapp.com",
+  projectId: "mylist-food",
+  storageBucket: "mylist-food.firebasestorage.app",
+  messagingSenderId: "89873159830",
+  appId: "1:89873159830:web:0e9957ca152001917014b7",
+  measurementId: "G-TK0MRFRSFK"
+    };
+
+    // Inicializa o Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let usuarioAtual = null;
+    let itensCache = [];
+    let unsubscribeSnapshot = null;
+
+    // Elementos da UI de Autenticação
+    const authScreen = document.getElementById('authScreen');
+    const mainApp = document.getElementById('mainApp');
+    const authForm = document.getElementById('authForm');
+    const authEmail = document.getElementById('authEmail');
+    const authPassword = document.getElementById('authPassword');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const authToggleBtn = document.getElementById('authToggleBtn');
+    const authError = document.getElementById('authError');
+    const authSubtitle = document.getElementById('authSubtitle');
+    const userEmailDisplay = document.getElementById('userEmailDisplay');
+    const btnLogout = document.getElementById('btnLogout');
+
+    let modoCadastro = false;
+
+    authToggleBtn.addEventListener('click', () => {
+      modoCadastro = !modoCadastro;
+      if (modoCadastro) {
+        authSubtitle.textContent = "Crie sua nova conta na nuvem";
+        authSubmitBtn.textContent = "Cadastrar";
+        authToggleBtn.textContent = "Já tem conta? Faça login";
+      } else {
+        authSubtitle.textContent = "Entre na sua conta para acessar sua lista";
+        authSubmitBtn.textContent = "Entrar";
+        authToggleBtn.textContent = "Não tem conta? Cadastre-se";
+      }
+      authError.textContent = "";
+    });
+
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      authError.textContent = "";
+      const email = authEmail.value;
+      const senha = authPassword.value;
+
+      try {
+        if (modoCadastro) {
+          await createUserWithEmailAndPassword(auth, email, senha);
+        } else {
+          await signInWithEmailAndPassword(auth, email, senha);
+        }
+      } catch (error) {
+        if (error.code === 'auth/invalid-credential') {
+          authError.textContent = "E-mail ou senha inválidos.";
+        } else if (error.code === 'auth/email-already-in-use') {
+          authError.textContent = "Este e-mail já está cadastrado.";
+        } else if (error.code === 'auth/weak-password') {
+          authError.textContent = "A senha deve ter pelo menos 6 caracteres.";
+        } else {
+          authError.textContent = "Erro: " + error.message;
+        }
+      }
+    });
+
+    btnLogout.addEventListener('click', () => {
+      signOut(auth);
+    });
+
+    // Monitora o estado de login do usuário
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        usuarioAtual = user;
+        authScreen.style.display = 'none';
+        mainApp.style.display = 'flex';
+        userEmailDisplay.textContent = user.email;
+        carregarItensTempoReal(user.uid);
+      } else {
+        usuarioAtual = null;
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
+        mainApp.style.display = 'none';
+        authScreen.style.display = 'flex';
+        authEmail.value = '';
+        authPassword.value = '';
+      }
+    });
+
+    // ==========================================
+    // 📦 GERENCIAMENTO DA LISTA NO FIRESTORE
+    // ==========================================
+    const listaItens = document.getElementById('listaItens');
+    const valorTotal = document.getElementById('valorTotal');
     const manualForm = document.getElementById('manualForm');
     const inputQtd = document.getElementById('inputQtd');
     const inputNome = document.getElementById('inputNome');
     const inputValor = document.getElementById('inputValor');
-    const listaItens = document.getElementById('listaItens');
-    const valorTotal = document.getElementById('valorTotal');
     const btnLimpar = document.getElementById('btnLimpar');
     const btnExportar = document.getElementById('btnExportar');
-
-    let itens = JSON.parse(localStorage.getItem('listaMercado')) || [];
+    const btnMic = document.getElementById('btnMic');
+    const statusText = document.getElementById('statusText');
 
     function formatarMoeda(valor) {
       return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    function salvarERenderizar() {
-      localStorage.setItem('listaMercado', JSON.stringify(itens));
+    function renderizarLista(itens) {
       listaItens.innerHTML = '';
       let totalGeral = 0;
 
-      itens.forEach((item, index) => {
+      itens.forEach((item) => {
         const qtd = item.quantidade || 1;
         const subtotal = item.valor * qtd;
         totalGeral += subtotal;
@@ -369,7 +594,7 @@
         li.className = `item ${item.comprado ? 'checked' : ''}`;
         li.innerHTML = `
           <div class="item-left">
-            <input type="checkbox" ${item.comprado ? 'checked' : ''} onchange="alternarItem(${index})" />
+            <input type="checkbox" ${item.comprado ? 'checked' : ''} onchange="window.alternarItem('${item.id}', ${!item.comprado})" />
             <div class="item-info">
               <span class="item-name">${item.nome}</span>
               <span class="item-detail">${qtd}x ${formatarMoeda(item.valor)}</span>
@@ -377,12 +602,12 @@
           </div>
           <div class="item-right">
             <div class="qty-controls">
-              <button class="btn-qty" onclick="alterarQuantidade(${index}, -1)" title="Diminuir">-</button>
+              <button class="btn-qty" onclick="window.alterarQuantidade('${item.id}', ${qtd}, -1)">-</button>
               <span>${qtd}</span>
-              <button class="btn-qty" onclick="alterarQuantidade(${index}, 1)" title="Aumentar">+</button>
+              <button class="btn-qty" onclick="window.alterarQuantidade('${item.id}', ${qtd}, 1)">+</button>
             </div>
             <span class="item-subtotal">${formatarMoeda(subtotal)}</span>
-            <button class="btn-del" onclick="removerItem(${index})" title="Remover">✕</button>
+            <button class="btn-del" onclick="window.removerItem('${item.id}')">✕</button>
           </div>
         `;
         listaItens.appendChild(li);
@@ -391,100 +616,71 @@
       valorTotal.textContent = formatarMoeda(totalGeral);
     }
 
-    function adicionarItem(quantidade, nome, valor) {
+    function carregarItensTempoReal(uid) {
+      const q = query(collection(db, "mercado"), where("userId", "==", uid));
+      unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+        itensCache = [];
+        snapshot.forEach((docSnap) => {
+          itensCache.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        // Ordena opcionalmente por nome ou data se quiser
+        renderizarLista(itensCache);
+      });
+    }
+
+    async function adicionarItemFirestore(quantidade, nome, valor) {
+      if (!usuarioAtual) return;
       const qtdFinal = parseInt(quantidade, 10) || 1;
       const nomeLimpo = nome.trim();
       const nomeFormatado = nomeLimpo.charAt(0).toUpperCase() + nomeLimpo.slice(1);
 
-      itens.push({
+      await addDoc(collection(db, "mercado"), {
+        userId: usuarioAtual.uid,
         quantidade: qtdFinal,
         nome: nomeFormatado,
         valor: parseFloat(valor) || 0,
-        comprado: false
+        comprado: false,
+        criadoEm: Date.now()
       });
-      salvarERenderizar();
     }
 
-    window.alterarQuantidade = (index, delta) => {
-      const novaQtd = (itens[index].quantidade || 1) + delta;
+    window.alterarQuantidade = async (id, qtdAtual, delta) => {
+      const novaQtd = qtdAtual + delta;
       if (novaQtd >= 1) {
-        itens[index].quantidade = novaQtd;
-        salvarERenderizar();
+        const docRef = doc(db, "mercado", id);
+        await updateDoc(docRef, { quantidade: novaQtd });
       }
     };
 
-    window.alternarItem = (index) => {
-      itens[index].comprado = !itens[index].comprado;
-      salvarERenderizar();
+    window.alternarItem = async (id, novoStatus) => {
+      const docRef = doc(db, "mercado", id);
+      await updateDoc(docRef, { comprado: novoStatus });
     };
 
-    window.removerItem = (index) => {
-      itens.splice(index, 1);
-      salvarERenderizar();
+    window.removerItem = async (id) => {
+      await deleteDoc(doc(db, "mercado", id));
     };
 
-    btnLimpar.addEventListener('click', () => {
-      if (itens.length && confirm('Deseja apagar toda a lista?')) {
-        itens = [];
-        salvarERenderizar();
+    btnLimpar.addEventListener('click', async () => {
+      if (itensCache.length && confirm('Deseja apagar todos os itens da sua lista?')) {
+        for (let item of itensCache) {
+          await deleteDoc(doc(db, "mercado", item.id));
+        }
       }
-    });
-
-    // Exportar para CSV compatível com Excel PT-BR
-    btnExportar.addEventListener('click', () => {
-      if (!itens.length) {
-        alert('A lista está vazia! Adicione itens antes de exportar.');
-        return;
-      }
-
-      const linhas = [
-        ['Quantidade', 'Produto', 'Valor Unitário (R$)', 'Subtotal (R$)', 'Status']
-      ];
-
-      let totalGeral = 0;
-
-      itens.forEach((item) => {
-        const qtd = item.quantidade || 1;
-        const unitario = item.valor || 0;
-        const subtotal = qtd * unitario;
-        totalGeral += subtotal;
-
-        linhas.push([
-          qtd,
-          `"${item.nome.replace(/"/g, '""')}"`,
-          unitario.toFixed(2).replace('.', ','),
-          subtotal.toFixed(2).replace('.', ','),
-          item.comprado ? 'Comprado' : 'Pendente'
-        ]);
-      });
-
-      // Linha final com o Total Geral
-      linhas.push(['', '', 'TOTAL GERAL', totalGeral.toFixed(2).replace('.', ','), '']);
-
-      // BOM UTF-8 (\uFEFF) garante que acentos abram corretamente no Excel
-      const csvConteudo = '\uFEFF' + linhas.map(linha => linha.join(';')).join('\r\n');
-      const blob = new Blob([csvConteudo], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-
-      const dataHoje = new Date().toISOString().slice(0, 10);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `lista_mercado_${dataHoje}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
     });
 
     manualForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      adicionarItem(inputQtd.value, inputNome.value, inputValor.value);
+      adicionarItemFirestore(inputQtd.value, inputNome.value, inputValor.value);
       inputQtd.value = '1';
       inputNome.value = '';
       inputValor.value = '';
       inputQtd.focus();
     });
 
+    // ==========================================
+    // 🎤 RECONHECIMENTO DE VOZ
+    // ==========================================
     function converterNumerosExtensoInicio(texto) {
       const mapa = {
         'um': '1', 'uma': '1', 'dois': '2', 'duas': '2',
@@ -520,10 +716,10 @@
         const preco = parseFloat(matchPreco[2]);
         const subtotal = preco * quantidade;
 
-        adicionarItem(quantidade, produto, preco);
+        adicionarItemFirestore(quantidade, produto, preco);
         statusText.textContent = `✅ ${quantidade}x ${produto} (${formatarMoeda(preco)} un.) = ${formatarMoeda(subtotal)}`;
       } else {
-        adicionarItem(quantidade, limpo || texto.trim(), 0);
+        adicionarItemFirestore(quantidade, limpo || texto.trim(), 0);
         statusText.textContent = `⚠️ Adicionado sem valor: ${quantidade}x "${limpo || texto}"`;
       }
     }
@@ -543,7 +739,7 @@
       recognition.onstart = () => {
         btnMic.classList.add('listening');
         btnMic.textContent = '🛑 Ouvindo... Fale agora';
-        statusText.textContent = 'Ex: "2 arroz 25 reais" ou "Feijão 8 e 50"';
+        statusText.textContent = 'Ex: "2 arroz 25 reais"';
       };
 
       recognition.onresult = (event) => {
@@ -561,10 +757,51 @@
       };
     } else {
       btnMic.disabled = true;
-      statusText.textContent = 'Seu navegador não suporta comando de voz. Use o campo manual.';
+      statusText.textContent = 'Seu navegador não suporta voz.';
     }
 
-    salvarERenderizar();
+    // ==========================================
+    // 📊 EXPORTAR CSV
+    // ==========================================
+    btnExportar.addEventListener('click', () => {
+      if (!itensCache.length) {
+        alert('A lista está vazia!');
+        return;
+      }
+
+      const linhas = [['Quantidade', 'Produto', 'Valor Unitário (R$)', 'Subtotal (R$)', 'Status']];
+      let totalGeral = 0;
+
+      itensCache.forEach((item) => {
+        const qtd = item.quantidade || 1;
+        const unitario = item.valor || 0;
+        const subtotal = qtd * unitario;
+        totalGeral += subtotal;
+
+        linhas.push([
+          qtd,
+          `"${item.nome.replace(/"/g, '""')}"`,
+          unitario.toFixed(2).replace('.', ','),
+          subtotal.toFixed(2).replace('.', ','),
+          item.comprado ? 'Comprado' : 'Pendente'
+        ]);
+      });
+
+      linhas.push(['', '', 'TOTAL GERAL', totalGeral.toFixed(2).replace('.', ','), '']);
+
+      const csvConteudo = '\uFEFF' + linhas.map(linha => linha.join(';')).join('\r\n');
+      const blob = new Blob([csvConteudo], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+
+      const dataHoje = new Date().toISOString().slice(0, 10);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `lista_mercado_${dataHoje}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
   </script>
 </body>
 </html>
