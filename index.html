@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lista de Mercado por Voz</title>
+  <style>
+    :root {
+      --primary: #10b981;
+      --primary-dark: #059669;
+      --danger: #ef4444;
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 480px;
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      margin-bottom: 6px;
+    }
+
+    header p {
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+
+    /* Botão de Voz */
+    .voice-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 16px;
+      background: #ecfdf5;
+      border: 1px dashed var(--primary);
+      border-radius: 12px;
+    }
+
+    .btn-mic {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 14px 28px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: transform 0.15s, background 0.2s;
+    }
+
+    .btn-mic:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-mic.listening {
+      background: var(--danger);
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+      70% { box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+    #statusText {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+      min-height: 20px;
+    }
+
+    /* Formulário Manual */
+    .manual-form {
+      display: flex;
+      gap: 8px;
+    }
+
+    .manual-form input {
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .manual-form input:focus {
+      border-color: var(--primary);
+    }
+
+    #inputNome {
+      flex: 2;
+    }
+
+    #inputValor {
+      flex: 1;
+      min-width: 90px;
+    }
+
+    .btn-add {
+      background: var(--text);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Lista de Itens */
+    ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    .item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      background: #f9fafb;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .item.checked .item-name {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+
+    .item-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .item-left input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .item-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .item-price {
+      font-weight: 600;
+      color: var(--primary-dark);
+    }
+
+    .btn-del {
+      background: none;
+      border: none;
+      color: var(--danger);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 2px 6px;
+    }
+
+    /* Rodapé / Total */
+    footer {
+      border-top: 1px solid #e5e7eb;
+      padding-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .total-box span {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .total-box strong {
+      font-size: 1.4rem;
+      color: var(--text);
+    }
+
+    .btn-clear {
+      background: transparent;
+      border: 1px solid #d1d5db;
+      color: var(--muted);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .btn-clear:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🛒 Lista de Mercado</h1>
+      <p>Toque no microfone e diga: <strong>"Arroz 25 reais"</strong> ou <strong>"Leite 5 e 90"</strong></p>
+    </header>
+
+    <div class="voice-section">
+      <button id="btnMic" class="btn-mic" type="button">🎤 Falar Produto e Valor</button>
+      <div id="statusText">Pronto para ouvir...</div>
+    </div>
+
+    <form id="manualForm" class="manual-form">
+      <input type="text" id="inputNome" placeholder="Produto (ex: Café)" required />
+      <input type="number" id="inputValor" placeholder="Valor (R$)" step="0.01" min="0" required />
+      <button type="submit" class="btn-add">+</button>
+    </form>
+
+    <ul id="listaItens"></ul>
+
+    <footer>
+      <div class="total-box">
+        <span>Total da Lista</span>
+        <strong id="valorTotal">R$ 0,00</strong>
+      </div>
+      <button id="btnLimpar" class="btn-clear" type="button">Limpar Tudo</button>
+    </footer>
+  </div>
+
+  <script>
+    const btnMic = document.getElementById('btnMic');
+    const statusText = document.getElementById('statusText');
+    const manualForm = document.getElementById('manualForm');
+    const inputNome = document.getElementById('inputNome');
+    const inputValor = document.getElementById('inputValor');
+    const listaItens = document.getElementById('listaItens');
+    const valorTotal = document.getElementById('valorTotal');
+    const btnLimpar = document.getElementById('btnLimpar');
+
+    let itens = JSON.parse(localStorage.getItem('listaMercado')) || [];
+
+    // Formata número para Real Brasileiro
+    function formatarMoeda(valor) {
+      return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function salvarERenderizar() {
+      localStorage.setItem('listaMercado', JSON.stringify(itens));
+      listaItens.innerHTML = '';
+      let total = 0;
+
+      itens.forEach((item, index) => {
+        total += item.valor;
+
+        const li = document.createElement('li');
+        li.className = `item ${item.comprado ? 'checked' : ''}`;
+        li.innerHTML = `
+          <div class="item-left">
+            <input type="checkbox" ${item.comprado ? 'checked' : ''} onchange="alternarItem(${index})" />
+            <span class="item-name">${item.nome}</span>
+          </div>
+          <div class="item-right">
+            <span class="item-price">${formatarMoeda(item.valor)}</span>
+            <button class="btn-del" onclick="removerItem(${index})" title="Remover">✕</button>
+          </div>
+        `;
+        listaItens.appendChild(li);
+      });
+
+      valorTotal.textContent = formatarMoeda(total);
+    }
+
+    function adicionarItem(nome, valor) {
+      const nomeFormatado = nome.charAt(0).toUpperCase() + nome.slice(1);
+      itens.push({ nome: nomeFormatado, valor: parseFloat(valor) || 0, comprado: false });
+      salvarERenderizar();
+    }
+
+    window.alternarItem = (index) => {
+      itens[index].comprado = !itens[index].comprado;
+      salvarERenderizar();
+    };
+
+    window.removerItem = (index) => {
+      itens.splice(index, 1);
+      salvarERenderizar();
+    };
+
+    btnLimpar.addEventListener('click', () => {
+      if (itens.length && confirm('Deseja apagar toda a lista?')) {
+        itens = [];
+        salvarERenderizar();
+      }
+    });
+
+    manualForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      adicionarItem(inputNome.value.trim(), inputValor.value);
+      inputNome.value = '';
+      inputValor.value = '';
+    });
+
+    // Interpreta frases faladas como:
+    // "Feijão 8 e 50", "Macarrão 4 reais e 20 centavos", "Pão 12,90"
+    function interpretarFala(texto) {
+      let limpo = texto.toLowerCase().trim();
+
+      // Normaliza expressões monetárias faladas
+      limpo = limpo
+        .replace(/\s+reais\s+e\s+/g, '.')
+        .replace(/\s+real\s+e\s+/g, '.')
+        .replace(/\s+reais?/g, '')
+        .replace(/\s+centavos?/g, '')
+        .replace(/r\$\s*/g, '')
+        .replace(/(\d+)\s+e\s+(\d{1,2})\b/g, '$1.$2')
+        .replace(/(\d+),(\d{1,2})/g, '$1.$2');
+
+      // Captura o número (preço) no final da frase
+      const match = limpo.match(/^(.*?)\s*(\d+(?:\.\d{1,2})?)$/);
+
+      if (match && match[1].trim()) {
+        const produto = match[1].replace(/\b(por|custa|valor|de)\s*$/g, '').trim();
+        const preco = parseFloat(match[2]);
+        adicionarItem(produto, preco);
+        statusText.textContent = `✅ Adicionado: ${produto} (${formatarMoeda(preco)})`;
+      } else {
+        // Caso fale só o produto sem valor, adiciona com R$ 0,00
+        adicionarItem(texto.trim(), 0);
+        statusText.textContent = `⚠️ Adicionado sem valor: "${texto}" (R$ 0,00)`;
+      }
+    }
+
+    // Configuração da Web Speech API
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'pt-BR';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      btnMic.addEventListener('click', () => {
+        recognition.start();
+      });
+
+      recognition.onstart = () => {
+        btnMic.classList.add('listening');
+        btnMic.textContent = '🛑 Ouvindo... Fale agora';
+        statusText.textContent = 'Exemplo: "Sabão em pó 18 e 90"';
+      };
+
+      recognition.onresult = (event) => {
+        const transcricao = event.results[0][0].transcript;
+        interpretarFala(transcricao);
+      };
+
+      recognition.onerror = (event) => {
+        statusText.textContent = `Erro no microfone: ${event.error}`;
+      };
+
+      recognition.onend = () => {
+        btnMic.classList.remove('listening');
+        btnMic.textContent = '🎤 Falar Produto e Valor';
+      };
+    } else {
+      btnMic.disabled = true;
+      statusText.textContent = 'Seu navegador não suporta comando de voz. Use o campo manual.';
+    }
+
+    // Inicializa a lista salva
+    salvarERenderizar();
+  </script>
+</body>
+</html>
