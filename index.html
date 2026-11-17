@@ -675,34 +675,54 @@
     });
 
     // ==========================================
-    // 🎤 RECONHECIMENTO DE VOZ (Produto + Valor, Qtd = 1)
+    // ==========================================
+    // 🎤 RECONHECIMENTO DE VOZ (Corrigido para centavos)
     // ==========================================
     function interpretarFala(texto) {
-      let limpo = texto.toLowerCase().trim();
+      const original = texto.trim();
+      let limpo = original.toLowerCase();
       const quantidadePadrao = 1;
 
-      // Normaliza expressões monetárias faladas
+      // Remove palavras de ligação/moeda que atrapalham o padrão
       limpo = limpo
-        .replace(/\s+reais\s+e\s+/g, '.')
-        .replace(/\s+real\s+e\s+/g, '.')
-        .replace(/\s+reais?/g, '')
-        .replace(/\s+centavos?/g, '')
         .replace(/r\$\s*/g, '')
-        .replace(/(\d+)\s+e\s+(\d{1,2})\b/g, '$1.$2')
-        .replace(/(\d+),(\d{1,2})/g, '$1.$2');
+        .replace(/\b(reais|real|centavos|centavo)\b/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-      // Captura tudo antes do número final como Produto, e o número final como Valor
-      const matchPreco = limpo.match(/^(.*?)\s*(\d+(?:\.\d{1,2})?)$/);
+      let produto = '';
+      let preco = 0;
+      let encontrouPreco = false;
 
-      if (matchPreco && matchPreco[1].trim()) {
-        const produto = matchPreco[1].replace(/\b(por|custa|valor|de|cada|a)\s*$/g, '').trim();
-        const preco = parseFloat(matchPreco[2]);
+      // 1º: Tenta capturar preço composto no final: "23 e 10", "23,10" ou "23.10"
+      const matchComposto = limpo.match(/^(.*?)\s+(\d+)\s*(?:e|,|\.)\s*(\d{1,2})$/);
+
+      if (matchComposto && matchComposto[1].trim()) {
+        produto = matchComposto[1];
+        const reais = matchComposto[2];
+        // Se falar "23 e 5", assume 50 centavos; se falar "23 e 05" ou "23 e 10", mantém os 2 dígitos
+        const centavos = matchComposto[3].padEnd(2, '0');
+        preco = parseFloat(`${reais}.${centavos}`);
+        encontrouPreco = true;
+      } else {
+        // 2º: Tenta capturar preço inteiro no final: "café 23"
+        const matchInteiro = limpo.match(/^(.*?)\s+(\d+)$/);
+        if (matchInteiro && matchInteiro[1].trim()) {
+          produto = matchInteiro[1];
+          preco = parseFloat(matchInteiro[2]);
+          encontrouPreco = true;
+        }
+      }
+
+      if (encontrouPreco) {
+        // Limpa preposições sobrando no final do nome do produto (ex: "café por", "arroz de")
+        produto = produto.replace(/\b(por|custa|valor|de|cada|a)\s*$/g, '').trim();
 
         adicionarItemFirestore(quantidadePadrao, produto, preco);
         statusText.textContent = `✅ 1x ${produto} (${formatarMoeda(preco)})`;
       } else {
-        adicionarItemFirestore(quantidadePadrao, texto.trim(), 0);
-        statusText.textContent = `⚠️ Adicionado sem valor: 1x "${texto.trim()}"`;
+        adicionarItemFirestore(quantidadePadrao, original, 0);
+        statusText.textContent = `⚠️ Adicionado sem valor: 1x "${original}"`;
       }
     }
 
