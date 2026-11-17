@@ -412,11 +412,11 @@
 
       <header>
         <h1>🛒 Minha Lista</h1>
-        <p>Fale: <strong>"2 arroz 25 reais"</strong> ou <strong>"Café 18 e 90"</strong></p>
+        <p>Fale apenas produto e valor: <strong>"Arroz 25 reais"</strong> ou <strong>"Café 18 e 90"</strong></p>
       </header>
 
       <div class="voice-section">
-        <button id="btnMic" class="btn-mic" type="button">🎤 Falar Qtd, Produto e Valor</button>
+        <button id="btnMic" class="btn-mic" type="button">🎤 Falar Produto e Valor</button>
         <div id="statusText">Pronto para ouvir...</div>
       </div>
 
@@ -456,7 +456,6 @@
       getFirestore,
       collection,
       addDoc,
-      getDocs,
       doc,
       updateDoc,
       deleteDoc,
@@ -478,7 +477,6 @@
   measurementId: "G-TK0MRFRSFK"
     };
 
-    // Inicializa o Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -545,7 +543,6 @@
       signOut(auth);
     });
 
-    // Monitora o estado de login do usuário
     onAuthStateChanged(auth, (user) => {
       if (user) {
         usuarioAtual = user;
@@ -623,7 +620,6 @@
         snapshot.forEach((docSnap) => {
           itensCache.push({ id: docSnap.id, ...docSnap.data() });
         });
-        // Ordena opcionalmente por nome ou data se quiser
         renderizarLista(itensCache);
       });
     }
@@ -675,31 +671,17 @@
       inputQtd.value = '1';
       inputNome.value = '';
       inputValor.value = '';
-      inputQtd.focus();
+      inputNome.focus();
     });
 
     // ==========================================
-    // 🎤 RECONHECIMENTO DE VOZ
+    // 🎤 RECONHECIMENTO DE VOZ (Produto + Valor, Qtd = 1)
     // ==========================================
-    function converterNumerosExtensoInicio(texto) {
-      const mapa = {
-        'um': '1', 'uma': '1', 'dois': '2', 'duas': '2',
-        'três': '3', 'tres': '3', 'quatro': '4', 'cinco': '5',
-        'seis': '6', 'sete': '7', 'oito': '8', 'nove': '9', 'dez': '10'
-      };
-      return texto.replace(/^(um|uma|dois|duas|três|tres|quatro|cinco|seis|sete|oito|nove|dez)\b/i, (m) => mapa[m.toLowerCase()]);
-    }
-
     function interpretarFala(texto) {
-      let limpo = converterNumerosExtensoInicio(texto.toLowerCase().trim());
-      let quantidade = 1;
+      let limpo = texto.toLowerCase().trim();
+      const quantidadePadrao = 1;
 
-      const matchQtdInicio = limpo.match(/^(\d+)\s+(?:unidades?\s+de\s+|pacotes?\s+de\s+|caixas?\s+de\s+|latas?\s+de\s+|garrafas?\s+de\s+)?(.+)$/);
-      if (matchQtdInicio) {
-        quantidade = parseInt(matchQtdInicio[1], 10);
-        limpo = matchQtdInicio[2].trim();
-      }
-
+      // Normaliza expressões monetárias faladas
       limpo = limpo
         .replace(/\s+reais\s+e\s+/g, '.')
         .replace(/\s+real\s+e\s+/g, '.')
@@ -709,18 +691,18 @@
         .replace(/(\d+)\s+e\s+(\d{1,2})\b/g, '$1.$2')
         .replace(/(\d+),(\d{1,2})/g, '$1.$2');
 
+      // Captura tudo antes do número final como Produto, e o número final como Valor
       const matchPreco = limpo.match(/^(.*?)\s*(\d+(?:\.\d{1,2})?)$/);
 
       if (matchPreco && matchPreco[1].trim()) {
         const produto = matchPreco[1].replace(/\b(por|custa|valor|de|cada|a)\s*$/g, '').trim();
         const preco = parseFloat(matchPreco[2]);
-        const subtotal = preco * quantidade;
 
-        adicionarItemFirestore(quantidade, produto, preco);
-        statusText.textContent = `✅ ${quantidade}x ${produto} (${formatarMoeda(preco)} un.) = ${formatarMoeda(subtotal)}`;
+        adicionarItemFirestore(quantidadePadrao, produto, preco);
+        statusText.textContent = `✅ 1x ${produto} (${formatarMoeda(preco)})`;
       } else {
-        adicionarItemFirestore(quantidade, limpo || texto.trim(), 0);
-        statusText.textContent = `⚠️ Adicionado sem valor: ${quantidade}x "${limpo || texto}"`;
+        adicionarItemFirestore(quantidadePadrao, texto.trim(), 0);
+        statusText.textContent = `⚠️ Adicionado sem valor: 1x "${texto.trim()}"`;
       }
     }
 
@@ -739,7 +721,7 @@
       recognition.onstart = () => {
         btnMic.classList.add('listening');
         btnMic.textContent = '🛑 Ouvindo... Fale agora';
-        statusText.textContent = 'Ex: "2 arroz 25 reais"';
+        statusText.textContent = 'Ex: "Arroz 25 reais" ou "Leite 5 e 90"';
       };
 
       recognition.onresult = (event) => {
@@ -753,7 +735,7 @@
 
       recognition.onend = () => {
         btnMic.classList.remove('listening');
-        btnMic.textContent = '🎤 Falar Qtd, Produto e Valor';
+        btnMic.textContent = '🎤 Falar Produto e Valor';
       };
     } else {
       btnMic.disabled = true;
