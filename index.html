@@ -8,6 +8,8 @@
     :root {
       --primary: #10b981;
       --primary-dark: #059669;
+      --excel: #1d6f42;
+      --excel-dark: #145331;
       --danger: #ef4444;
       --bg: #f3f4f6;
       --card: #ffffff;
@@ -33,7 +35,7 @@
 
     .app {
       width: 100%;
-      max-width: 480px;
+      max-width: 520px;
       background: var(--card);
       border-radius: 16px;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
@@ -106,10 +108,11 @@
       min-height: 20px;
     }
 
-    /* Formulário Manual */
+    /* Formulário Manual (Ordem: Qtd -> Produto -> Valor) */
     .manual-form {
       display: flex;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     .manual-form input {
@@ -124,13 +127,17 @@
       border-color: var(--primary);
     }
 
+    #inputQtd {
+      flex: 0 1 70px;
+      text-align: center;
+    }
+
     #inputNome {
-      flex: 2;
+      flex: 2 1 160px;
     }
 
     #inputValor {
-      flex: 1;
-      min-width: 90px;
+      flex: 1 1 100px;
     }
 
     .btn-add {
@@ -138,7 +145,7 @@
       color: white;
       border: none;
       border-radius: 8px;
-      padding: 0 16px;
+      padding: 10px 16px;
       font-weight: 600;
       cursor: pointer;
     }
@@ -161,6 +168,7 @@
       background: #f9fafb;
       border-radius: 10px;
       border: 1px solid #e5e7eb;
+      gap: 10px;
     }
 
     .item.checked .item-name {
@@ -181,15 +189,50 @@
       cursor: pointer;
     }
 
+    .item-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .item-name {
+      font-weight: 600;
+    }
+
+    .item-detail {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
     .item-right {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
-    .item-price {
-      font-weight: 600;
+    .qty-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #e5e7eb;
+      border-radius: 6px;
+      padding: 2px 6px;
+    }
+
+    .btn-qty {
+      background: none;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      padding: 2px 6px;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .item-subtotal {
+      font-weight: 700;
       color: var(--primary-dark);
+      min-width: 75px;
+      text-align: right;
     }
 
     .btn-del {
@@ -201,13 +244,15 @@
       padding: 2px 6px;
     }
 
-    /* Rodapé / Total */
+    /* Rodapé / Total / Ações */
     footer {
       border-top: 1px solid #e5e7eb;
       padding-top: 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
     }
 
     .total-box span {
@@ -219,6 +264,27 @@
     .total-box strong {
       font-size: 1.4rem;
       color: var(--text);
+    }
+
+    .footer-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-export {
+      background: var(--excel);
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-export:hover {
+      background: var(--excel-dark);
     }
 
     .btn-clear {
@@ -241,16 +307,18 @@
   <div class="app">
     <header>
       <h1>🛒 Lista de Mercado</h1>
-      <p>Toque no microfone e diga: <strong>"Arroz 25 reais"</strong> ou <strong>"Leite 5 e 90"</strong></p>
+      <p>Fale: <strong>"2 arroz 25 reais"</strong> ou apenas <strong>"Arroz 25 reais"</strong> (qtd = 1)</p>
     </header>
 
     <div class="voice-section">
-      <button id="btnMic" class="btn-mic" type="button">🎤 Falar Produto e Valor</button>
+      <button id="btnMic" class="btn-mic" type="button">🎤 Falar Qtd, Produto e Valor</button>
       <div id="statusText">Pronto para ouvir...</div>
     </div>
 
+    <!-- Ordem: Quantidade -> Produto -> Valor -->
     <form id="manualForm" class="manual-form">
-      <input type="text" id="inputNome" placeholder="Produto (ex: Café)" required />
+      <input type="number" id="inputQtd" placeholder="Qtd" value="1" min="1" step="1" required title="Quantidade" />
+      <input type="text" id="inputNome" placeholder="Produto (ex: Arroz)" required />
       <input type="number" id="inputValor" placeholder="Valor (R$)" step="0.01" min="0" required />
       <button type="submit" class="btn-add">+</button>
     </form>
@@ -262,7 +330,10 @@
         <span>Total da Lista</span>
         <strong id="valorTotal">R$ 0,00</strong>
       </div>
-      <button id="btnLimpar" class="btn-clear" type="button">Limpar Tudo</button>
+      <div class="footer-actions">
+        <button id="btnExportar" class="btn-export" type="button">📊 Exportar Excel/CSV</button>
+        <button id="btnLimpar" class="btn-clear" type="button">Limpar</button>
+      </div>
     </footer>
   </div>
 
@@ -270,15 +341,16 @@
     const btnMic = document.getElementById('btnMic');
     const statusText = document.getElementById('statusText');
     const manualForm = document.getElementById('manualForm');
+    const inputQtd = document.getElementById('inputQtd');
     const inputNome = document.getElementById('inputNome');
     const inputValor = document.getElementById('inputValor');
     const listaItens = document.getElementById('listaItens');
     const valorTotal = document.getElementById('valorTotal');
     const btnLimpar = document.getElementById('btnLimpar');
+    const btnExportar = document.getElementById('btnExportar');
 
     let itens = JSON.parse(localStorage.getItem('listaMercado')) || [];
 
-    // Formata número para Real Brasileiro
     function formatarMoeda(valor) {
       return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
@@ -286,34 +358,60 @@
     function salvarERenderizar() {
       localStorage.setItem('listaMercado', JSON.stringify(itens));
       listaItens.innerHTML = '';
-      let total = 0;
+      let totalGeral = 0;
 
       itens.forEach((item, index) => {
-        total += item.valor;
+        const qtd = item.quantidade || 1;
+        const subtotal = item.valor * qtd;
+        totalGeral += subtotal;
 
         const li = document.createElement('li');
         li.className = `item ${item.comprado ? 'checked' : ''}`;
         li.innerHTML = `
           <div class="item-left">
             <input type="checkbox" ${item.comprado ? 'checked' : ''} onchange="alternarItem(${index})" />
-            <span class="item-name">${item.nome}</span>
+            <div class="item-info">
+              <span class="item-name">${item.nome}</span>
+              <span class="item-detail">${qtd}x ${formatarMoeda(item.valor)}</span>
+            </div>
           </div>
           <div class="item-right">
-            <span class="item-price">${formatarMoeda(item.valor)}</span>
+            <div class="qty-controls">
+              <button class="btn-qty" onclick="alterarQuantidade(${index}, -1)" title="Diminuir">-</button>
+              <span>${qtd}</span>
+              <button class="btn-qty" onclick="alterarQuantidade(${index}, 1)" title="Aumentar">+</button>
+            </div>
+            <span class="item-subtotal">${formatarMoeda(subtotal)}</span>
             <button class="btn-del" onclick="removerItem(${index})" title="Remover">✕</button>
           </div>
         `;
         listaItens.appendChild(li);
       });
 
-      valorTotal.textContent = formatarMoeda(total);
+      valorTotal.textContent = formatarMoeda(totalGeral);
     }
 
-    function adicionarItem(nome, valor) {
-      const nomeFormatado = nome.charAt(0).toUpperCase() + nome.slice(1);
-      itens.push({ nome: nomeFormatado, valor: parseFloat(valor) || 0, comprado: false });
+    function adicionarItem(quantidade, nome, valor) {
+      const qtdFinal = parseInt(quantidade, 10) || 1;
+      const nomeLimpo = nome.trim();
+      const nomeFormatado = nomeLimpo.charAt(0).toUpperCase() + nomeLimpo.slice(1);
+
+      itens.push({
+        quantidade: qtdFinal,
+        nome: nomeFormatado,
+        valor: parseFloat(valor) || 0,
+        comprado: false
+      });
       salvarERenderizar();
     }
+
+    window.alterarQuantidade = (index, delta) => {
+      const novaQtd = (itens[index].quantidade || 1) + delta;
+      if (novaQtd >= 1) {
+        itens[index].quantidade = novaQtd;
+        salvarERenderizar();
+      }
+    };
 
     window.alternarItem = (index) => {
       itens[index].comprado = !itens[index].comprado;
@@ -332,19 +430,80 @@
       }
     });
 
-    manualForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      adicionarItem(inputNome.value.trim(), inputValor.value);
-      inputNome.value = '';
-      inputValor.value = '';
+    // Exportar para CSV compatível com Excel PT-BR
+    btnExportar.addEventListener('click', () => {
+      if (!itens.length) {
+        alert('A lista está vazia! Adicione itens antes de exportar.');
+        return;
+      }
+
+      const linhas = [
+        ['Quantidade', 'Produto', 'Valor Unitário (R$)', 'Subtotal (R$)', 'Status']
+      ];
+
+      let totalGeral = 0;
+
+      itens.forEach((item) => {
+        const qtd = item.quantidade || 1;
+        const unitario = item.valor || 0;
+        const subtotal = qtd * unitario;
+        totalGeral += subtotal;
+
+        linhas.push([
+          qtd,
+          `"${item.nome.replace(/"/g, '""')}"`,
+          unitario.toFixed(2).replace('.', ','),
+          subtotal.toFixed(2).replace('.', ','),
+          item.comprado ? 'Comprado' : 'Pendente'
+        ]);
+      });
+
+      // Linha final com o Total Geral
+      linhas.push(['', '', 'TOTAL GERAL', totalGeral.toFixed(2).replace('.', ','), '']);
+
+      // BOM UTF-8 (\uFEFF) garante que acentos abram corretamente no Excel
+      const csvConteudo = '\uFEFF' + linhas.map(linha => linha.join(';')).join('\r\n');
+      const blob = new Blob([csvConteudo], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+
+      const dataHoje = new Date().toISOString().slice(0, 10);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `lista_mercado_${dataHoje}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     });
 
-    // Interpreta frases faladas como:
-    // "Feijão 8 e 50", "Macarrão 4 reais e 20 centavos", "Pão 12,90"
-    function interpretarFala(texto) {
-      let limpo = texto.toLowerCase().trim();
+    manualForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      adicionarItem(inputQtd.value, inputNome.value, inputValor.value);
+      inputQtd.value = '1';
+      inputNome.value = '';
+      inputValor.value = '';
+      inputQtd.focus();
+    });
 
-      // Normaliza expressões monetárias faladas
+    function converterNumerosExtensoInicio(texto) {
+      const mapa = {
+        'um': '1', 'uma': '1', 'dois': '2', 'duas': '2',
+        'três': '3', 'tres': '3', 'quatro': '4', 'cinco': '5',
+        'seis': '6', 'sete': '7', 'oito': '8', 'nove': '9', 'dez': '10'
+      };
+      return texto.replace(/^(um|uma|dois|duas|três|tres|quatro|cinco|seis|sete|oito|nove|dez)\b/i, (m) => mapa[m.toLowerCase()]);
+    }
+
+    function interpretarFala(texto) {
+      let limpo = converterNumerosExtensoInicio(texto.toLowerCase().trim());
+      let quantidade = 1;
+
+      const matchQtdInicio = limpo.match(/^(\d+)\s+(?:unidades?\s+de\s+|pacotes?\s+de\s+|caixas?\s+de\s+|latas?\s+de\s+|garrafas?\s+de\s+)?(.+)$/);
+      if (matchQtdInicio) {
+        quantidade = parseInt(matchQtdInicio[1], 10);
+        limpo = matchQtdInicio[2].trim();
+      }
+
       limpo = limpo
         .replace(/\s+reais\s+e\s+/g, '.')
         .replace(/\s+real\s+e\s+/g, '.')
@@ -354,22 +513,21 @@
         .replace(/(\d+)\s+e\s+(\d{1,2})\b/g, '$1.$2')
         .replace(/(\d+),(\d{1,2})/g, '$1.$2');
 
-      // Captura o número (preço) no final da frase
-      const match = limpo.match(/^(.*?)\s*(\d+(?:\.\d{1,2})?)$/);
+      const matchPreco = limpo.match(/^(.*?)\s*(\d+(?:\.\d{1,2})?)$/);
 
-      if (match && match[1].trim()) {
-        const produto = match[1].replace(/\b(por|custa|valor|de)\s*$/g, '').trim();
-        const preco = parseFloat(match[2]);
-        adicionarItem(produto, preco);
-        statusText.textContent = `✅ Adicionado: ${produto} (${formatarMoeda(preco)})`;
+      if (matchPreco && matchPreco[1].trim()) {
+        const produto = matchPreco[1].replace(/\b(por|custa|valor|de|cada|a)\s*$/g, '').trim();
+        const preco = parseFloat(matchPreco[2]);
+        const subtotal = preco * quantidade;
+
+        adicionarItem(quantidade, produto, preco);
+        statusText.textContent = `✅ ${quantidade}x ${produto} (${formatarMoeda(preco)} un.) = ${formatarMoeda(subtotal)}`;
       } else {
-        // Caso fale só o produto sem valor, adiciona com R$ 0,00
-        adicionarItem(texto.trim(), 0);
-        statusText.textContent = `⚠️ Adicionado sem valor: "${texto}" (R$ 0,00)`;
+        adicionarItem(quantidade, limpo || texto.trim(), 0);
+        statusText.textContent = `⚠️ Adicionado sem valor: ${quantidade}x "${limpo || texto}"`;
       }
     }
 
-    // Configuração da Web Speech API
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (SpeechRecognition) {
@@ -385,7 +543,7 @@
       recognition.onstart = () => {
         btnMic.classList.add('listening');
         btnMic.textContent = '🛑 Ouvindo... Fale agora';
-        statusText.textContent = 'Exemplo: "Sabão em pó 18 e 90"';
+        statusText.textContent = 'Ex: "2 arroz 25 reais" ou "Feijão 8 e 50"';
       };
 
       recognition.onresult = (event) => {
@@ -399,14 +557,13 @@
 
       recognition.onend = () => {
         btnMic.classList.remove('listening');
-        btnMic.textContent = '🎤 Falar Produto e Valor';
+        btnMic.textContent = '🎤 Falar Qtd, Produto e Valor';
       };
     } else {
       btnMic.disabled = true;
       statusText.textContent = 'Seu navegador não suporta comando de voz. Use o campo manual.';
     }
 
-    // Inicializa a lista salva
     salvarERenderizar();
   </script>
 </body>
