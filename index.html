@@ -50,7 +50,7 @@
     #authScreen {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
       text-align: center;
     }
 
@@ -75,6 +75,24 @@
 
     .auth-form input:focus {
       border-color: var(--primary);
+    }
+
+    .forgot-wrapper {
+      text-align: right;
+      margin-top: -6px;
+    }
+
+    .btn-forgot {
+      background: none;
+      border: none;
+      color: var(--primary-dark);
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .btn-forgot:hover {
+      color: var(--text);
     }
 
     .btn-auth {
@@ -102,10 +120,18 @@
       text-decoration: underline;
     }
 
-    #authError {
-      color: var(--danger);
+    #authFeedback {
       font-size: 0.85rem;
-      min-height: 18px;
+      min-height: 20px;
+      font-weight: 500;
+    }
+
+    .feedback-error {
+      color: var(--danger);
+    }
+
+    .feedback-success {
+      color: var(--primary-dark);
     }
 
     /* App Principal (Oculto até logar) */
@@ -387,7 +413,7 @@
 </head>
 <body>
   <div class="app">
-    <!-- TELA DE LOGIN / CADASTRO -->
+    <!-- TELA DE LOGIN / CADASTRO / RECUPERAÇÃO DE SENHA -->
     <div id="authScreen">
       <h1>🛒 Lista de Mercado</h1>
       <p id="authSubtitle">Entre na sua conta para acessar sua lista na nuvem</p>
@@ -395,10 +421,15 @@
       <form id="authForm" class="auth-form">
         <input type="email" id="authEmail" placeholder="Seu e-mail" required />
         <input type="password" id="authPassword" placeholder="Sua senha (mínimo 6 dígitos)" required />
+
+        <div class="forgot-wrapper" id="forgotWrapper">
+          <button type="button" id="btnForgotPassword" class="btn-forgot">Esqueci minha senha</button>
+        </div>
+
         <button type="submit" id="authSubmitBtn" class="btn-auth">Entrar</button>
       </form>
 
-      <div id="authError"></div>
+      <div id="authFeedback"></div>
 
       <button type="button" id="authToggleBtn" class="auth-toggle">Não tem conta? Cadastre-se</button>
     </div>
@@ -412,7 +443,7 @@
 
       <header>
         <h1>🛒 Minha Lista</h1>
-        <p>Fale apenas produto e valor: <strong>"Arroz 25 reais"</strong> ou <strong>"Café 18 reais e 90"</strong></p>
+        <p>Fale apenas produto e valor: <strong>"Café 23 reais e 10"</strong> ou <strong>"Arroz 25 reais"</strong></p>
       </header>
 
       <div class="voice-section">
@@ -449,6 +480,7 @@
       getAuth,
       signInWithEmailAndPassword,
       createUserWithEmailAndPassword,
+      sendPasswordResetEmail,
       signOut,
       onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -468,7 +500,7 @@
     // ⚙️ CONFIGURAÇÃO DO SEU FIREBASE
     // ==========================================
     const firebaseConfig = {
-      apiKey: "AIzaSyC9IW8dctpLeWQYvfDY82eiyEe1xjsP5Pw",
+       apiKey: "AIzaSyC9IW8dctpLeWQYvfDY82eiyEe1xjsP5Pw",
   authDomain: "mylist-food.firebaseapp.com",
   projectId: "mylist-food",
   storageBucket: "mylist-food.firebasestorage.app",
@@ -479,6 +511,7 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    auth.languageCode = 'pt-BR'; // Define o idioma do e-mail de redefinição para Português
     const db = getFirestore(app);
 
     let usuarioAtual = null;
@@ -493,31 +526,66 @@
     const authPassword = document.getElementById('authPassword');
     const authSubmitBtn = document.getElementById('authSubmitBtn');
     const authToggleBtn = document.getElementById('authToggleBtn');
-    const authError = document.getElementById('authError');
+    const authFeedback = document.getElementById('authFeedback');
     const authSubtitle = document.getElementById('authSubtitle');
+    const forgotWrapper = document.getElementById('forgotWrapper');
+    const btnForgotPassword = document.getElementById('btnForgotPassword');
     const userEmailDisplay = document.getElementById('userEmailDisplay');
     const btnLogout = document.getElementById('btnLogout');
 
     let modoCadastro = false;
 
+    function exibirFeedback(mensagem, tipo = 'error') {
+      authFeedback.textContent = mensagem;
+      authFeedback.className = tipo === 'success' ? 'feedback-success' : 'feedback-error';
+    }
+
     authToggleBtn.addEventListener('click', () => {
       modoCadastro = !modoCadastro;
+      exibirFeedback("");
       if (modoCadastro) {
         authSubtitle.textContent = "Crie sua nova conta na nuvem";
         authSubmitBtn.textContent = "Cadastrar";
         authToggleBtn.textContent = "Já tem conta? Faça login";
+        forgotWrapper.style.display = "none";
       } else {
         authSubtitle.textContent = "Entre na sua conta para acessar sua lista";
         authSubmitBtn.textContent = "Entrar";
         authToggleBtn.textContent = "Não tem conta? Cadastre-se";
+        forgotWrapper.style.display = "block";
       }
-      authError.textContent = "";
+    });
+
+    // ==========================================
+    // 🔑 RECUPERAÇÃO DE SENHA (ESQUECI MINHA SENHA)
+    // ==========================================
+    btnForgotPassword.addEventListener('click', async () => {
+      const email = authEmail.value.trim();
+
+      if (!email) {
+        exibirFeedback("Digite seu e-mail cadastrado no campo acima para redefinir a senha.", "error");
+        authEmail.focus();
+        return;
+      }
+
+      try {
+        await sendPasswordResetEmail(auth, email);
+        exibirFeedback(`✅ E-mail de redefinição enviado para ${email}! Verifique sua caixa de entrada ou spam.`, "success");
+      } catch (error) {
+        if (error.code === 'auth/invalid-email') {
+          exibirFeedback("O formato do e-mail digitado é inválido.", "error");
+        } else if (error.code === 'auth/user-not-found') {
+          exibirFeedback("Não existe nenhuma conta cadastrada com este e-mail.", "error");
+        } else {
+          exibirFeedback("Erro ao enviar e-mail: " + error.message, "error");
+        }
+      }
     });
 
     authForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      authError.textContent = "";
-      const email = authEmail.value;
+      exibirFeedback("");
+      const email = authEmail.value.trim();
       const senha = authPassword.value;
 
       try {
@@ -528,13 +596,13 @@
         }
       } catch (error) {
         if (error.code === 'auth/invalid-credential') {
-          authError.textContent = "E-mail ou senha inválidos.";
+          exibirFeedback("E-mail ou senha inválidos.", "error");
         } else if (error.code === 'auth/email-already-in-use') {
-          authError.textContent = "Este e-mail já está cadastrado.";
+          exibirFeedback("Este e-mail já está cadastrado.", "error");
         } else if (error.code === 'auth/weak-password') {
-          authError.textContent = "A senha deve ter pelo menos 6 caracteres.";
+          exibirFeedback("A senha deve ter pelo menos 6 caracteres.", "error");
         } else {
-          authError.textContent = "Erro: " + error.message;
+          exibirFeedback("Erro: " + error.message, "error");
         }
       }
     });
@@ -555,7 +623,6 @@
         if (unsubscribeSnapshot) unsubscribeSnapshot();
         mainApp.style.display = 'none';
         authScreen.style.display = 'flex';
-        authEmail.value = '';
         authPassword.value = '';
       }
     });
@@ -675,7 +742,6 @@
     });
 
     // ==========================================
-    // ==========================================
     // 🎤 RECONHECIMENTO DE VOZ (Corrigido para centavos)
     // ==========================================
     function interpretarFala(texto) {
@@ -683,7 +749,6 @@
       let limpo = original.toLowerCase();
       const quantidadePadrao = 1;
 
-      // Remove palavras de ligação/moeda que atrapalham o padrão
       limpo = limpo
         .replace(/r\$\s*/g, '')
         .replace(/\b(reais|real|centavos|centavo)\b/g, ' ')
@@ -694,18 +759,15 @@
       let preco = 0;
       let encontrouPreco = false;
 
-      // 1º: Tenta capturar preço composto no final: "23 e 10", "23,10" ou "23.10"
       const matchComposto = limpo.match(/^(.*?)\s+(\d+)\s*(?:e|,|\.)\s*(\d{1,2})$/);
 
       if (matchComposto && matchComposto[1].trim()) {
         produto = matchComposto[1];
         const reais = matchComposto[2];
-        // Se falar "23 e 5", assume 50 centavos; se falar "23 e 05" ou "23 e 10", mantém os 2 dígitos
         const centavos = matchComposto[3].padEnd(2, '0');
         preco = parseFloat(`${reais}.${centavos}`);
         encontrouPreco = true;
       } else {
-        // 2º: Tenta capturar preço inteiro no final: "café 23"
         const matchInteiro = limpo.match(/^(.*?)\s+(\d+)$/);
         if (matchInteiro && matchInteiro[1].trim()) {
           produto = matchInteiro[1];
@@ -715,9 +777,7 @@
       }
 
       if (encontrouPreco) {
-        // Limpa preposições sobrando no final do nome do produto (ex: "café por", "arroz de")
         produto = produto.replace(/\b(por|custa|valor|de|cada|a)\s*$/g, '').trim();
-
         adicionarItemFirestore(quantidadePadrao, produto, preco);
         statusText.textContent = `✅ 1x ${produto} (${formatarMoeda(preco)})`;
       } else {
@@ -741,7 +801,7 @@
       recognition.onstart = () => {
         btnMic.classList.add('listening');
         btnMic.textContent = '🛑 Ouvindo... Fale agora';
-        statusText.textContent = 'Ex: "Arroz 25 reais" ou "Leite 5 e 90"';
+        statusText.textContent = 'Ex: "Café 23 e 10" ou "Leite 5 e 90"';
       };
 
       recognition.onresult = (event) => {
